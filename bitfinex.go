@@ -1,5 +1,5 @@
-// TODO: Public: Orderbook, Trades, Lends, Symbols, Symbols Details
-// TODO: Authenticated: New deposit, New order, Multiple new orders, Cancel order, Cancel multiple orders, Cancel all active orders, Replace order, Order status, Active Orders, Active Positions, Claim position, Past trades, Offer status, Active Swaps used in a margin position, Balance history, Close swap, Account informations, Margin informations
+// TODO: Public: Trades, Lends, Symbols, Symbols Details
+// TODO: Authenticated: New deposit, New order, Multiple new orders, Cancel multiple orders, Cancel all active orders, Replace order, Active Positions, Claim position, Offer status, Active Swaps used in a margin position, Balance history, Close swap, Account informations, Margin informations
 
 package bitfinex
 
@@ -76,6 +76,27 @@ type OrderbookOffer struct {
 	Amount    float64 `json:"amount,string"`    // amount (decimal)
 	Timestamp float64 `json:"timestamp,string"` // time
 }
+
+// OrderStatus ... (NEW)
+type OrderStatus struct {
+	ID                int     `json:"id"`                         // id (int): The order ID
+	Symbol            string  `json:"symbol, string"`             // symbol (string): The symbol name the order belongs to.
+	Exchange          string  `json:"exchange, string"`           //exchange (string): "bitfinex", "bitstamp".
+	Price             float64 `json:"price,string"`               // price (decimal): The price the order was issued at (can be null for market orders).
+	AvgExecutionPrice float64 `json:"avg_execution_price,string"` // avg_execution_price (decimal): The average price at which this order as been executed so far. 0 if the order has not been executed at all.
+	Side              string  `json:"side, string"`               // side (string): Either "buy" or "sell".
+	Type              string  `json:"type, string"`               // type (string): Either "market" / "limit" / "stop" / "trailing-stop".
+	Timestamp         float64 `json:"timestamp,string"`           // timestamp (time): The timestamp the order was submitted.
+	Live              bool    `json:"is_live,bool"`               // is_live (bool): Could the order still be filled?
+	Cacelled          bool    `json:"is_cancelled,bool"`          // is_cancelled (bool): Has the order been cancelled?
+	Forced            bool    `json:"was_forced,bool"`            // was_forced (bool): For margin only: true if it was forced by the system.
+	ExecutedAmount    float64 `json:"executed_amount,string"`     // executed_amount (decimal): How much of the order has been executed so far in its history?
+	RemainingAmount   float64 `json:"remaining_amount,string"`    // remaining_amount (decimal): How much is still remaining to be submitted?
+	OriginalAmount    float64 `json:"original_amount,string"`     // original_amount (decimal): What was the order originally submitted for?
+}
+
+// Orders ... (NEW)
+type Orders []OrderStatus
 
 // LendbookOffer ...
 type LendbookOffer struct {
@@ -334,6 +355,109 @@ func (api *API) MyTrades(symbol string, timestamp string, limitTrades int) (mytr
 
 		return nil, errors.New("API: " + errorMessage.Message)
 	}
+	return
+}
+
+// ActiveOrders returns an array of your active orders.
+func (api *API) ActiveOrders() (orders Orders, err error) {
+	request := struct {
+		URL   string `json:"request"`
+		Nonce string `json:"nonce"`
+	}{
+		"/v1/orders",
+		strconv.FormatInt(time.Now().UnixNano(), 10),
+	}
+
+	body, err := api.post(request.URL, request)
+	if err != nil {
+		return
+	}
+
+	err = json.Unmarshal(body, &orders)
+	if err != nil { // Failed to unmarshal expected message
+		// Attempt to unmarshal the error message
+		errorMessage := ErrorMessage{}
+		err = json.Unmarshal(body, &errorMessage)
+		if err != nil { // Not expected message and not expected error, bailing...
+			return
+		}
+
+		return orders, errors.New("API: " + errorMessage.Message)
+	}
+
+	return
+}
+
+// OrderStatus returns the status of an order given its id.
+func (api *API) OrderStatus(id int) (order OrderStatus, err error) {
+	request := struct {
+		URL     string `json:"request"`
+		Nonce   string `json:"nonce"`
+		OrderID int    `json:"order_id"`
+	}{
+		"/v1/order/status",
+		strconv.FormatInt(time.Now().UnixNano(), 10),
+		id,
+	}
+
+	body, err := api.post(request.URL, request)
+	if err != nil {
+		return
+	}
+
+	err = json.Unmarshal(body, &order)
+	if err != nil || order.ID != id { // Failed to unmarshal expected message
+		// Attempt to unmarshal the error message
+		errorMessage := ErrorMessage{}
+		err = json.Unmarshal(body, &errorMessage)
+		if err != nil { // Not expected message and not expected error, bailing...
+			return
+		}
+
+		return order, errors.New("API: " + errorMessage.Message)
+	}
+
+	return
+}
+
+// CancelOrder cancel an offer give its id.
+func (api *API) CancelOrder(id int) (err error) {
+	request := struct {
+		URL     string `json:"request"`
+		Nonce   string `json:"nonce"`
+		OfferID int    `json:"order_id"`
+	}{
+		"/v1/order/cancel",
+		strconv.FormatInt(time.Now().UnixNano(), 10),
+		id,
+	}
+
+	body, err := api.post(request.URL, request)
+	if err != nil {
+		return
+	}
+
+	tmpOrder := struct {
+		ID        int  `json:"id"`
+		Cancelled bool `json:"is_cancelled,bool"`
+	}{}
+
+	err = json.Unmarshal(body, &tmpOrder)
+	if err != nil || tmpOrder.ID != id { // Failed to unmarshal expected message
+		// Attempt to unmarshal the error message
+		errorMessage := ErrorMessage{}
+		err = json.Unmarshal(body, &errorMessage)
+		if err != nil { // Not expected message and not expected error, bailing...
+			return
+		}
+
+		return errors.New("API: " + errorMessage.Message)
+	}
+
+	if tmpOrder.Cancelled == true {
+		return errors.New("API: Order already cancelled")
+	}
+
 	return
 }
 

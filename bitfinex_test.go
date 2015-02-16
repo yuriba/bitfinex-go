@@ -61,6 +61,76 @@ func TestOrderbook(t *testing.T) {
 	}
 }
 
+func TestActiveOrders(t *testing.T) {
+	checkEnv(t)
+
+	orders, err := apiPrivate.ActiveOrders()
+	if err != nil {
+		t.Error("Failed: " + err.Error())
+		return
+	}
+
+	if len(orders) == 0 {
+		t.Log("No active offers detected, please inspect")
+		return
+	}
+
+	t.Log("Detected active orders, please inspect:")
+	for _, o := range orders {
+		t.Log("\tid:" + strconv.Itoa(o.ID) + " " + o.Symbol + ":" + o.Side + ":" + o.Type + " : " + strconv.FormatFloat(o.RemainingAmount, 'f', -1, 64) + " at " + strconv.FormatFloat(o.Price, 'f', -1, 64))
+	}
+
+}
+
+func TestOrderStatus(t *testing.T) {
+	checkEnv(t)
+
+	// Assuming TestActiveOrders has PASSED
+	orders, err := apiPrivate.ActiveOrders()
+	if err != nil {
+		t.Error("Failed: " + err.Error())
+		return
+	}
+
+	if len(orders) == 0 {
+		t.Log("No active orders, nothing to get the status of, please inspect")
+		return
+	}
+
+	t.Log("Order status # " + strconv.Itoa(orders[0].ID))
+	o, err := apiPrivate.OrderStatus(orders[0].ID)
+	if err != nil {
+		t.Error("Failed: " + err.Error())
+		return
+	}
+	t.Log("\tid:" + strconv.Itoa(o.ID) + " " + o.Symbol + ":" + o.Side + ":" + o.Type + " : " + strconv.FormatFloat(o.RemainingAmount, 'f', -1, 64) + " at " + strconv.FormatFloat(o.Price, 'f', -1, 64))
+
+	return
+}
+
+func TestCancelOrder(t *testing.T) {
+	checkEnv(t)
+
+	// Assuming TestActiveOrders has PASSED
+	orders, err := apiPrivate.ActiveOrders()
+	if err != nil {
+		t.Error("Failed: " + err.Error())
+		return
+	}
+
+	if len(orders) == 0 {
+		t.Log("No active orders, nothing to cancel, please inspect")
+		return
+	}
+
+	t.Log("Cancelling order # " + strconv.Itoa(orders[0].ID))
+	err = apiPrivate.CancelOrder(orders[0].ID)
+	if err != nil {
+		t.Error("Failed: " + err.Error())
+		return
+	}
+}
+
 func TestLendbook(t *testing.T) {
 	// Test normal request
 	lendbook, err := apiPublic.Lendbook("btc", 2, 2)
