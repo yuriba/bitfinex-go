@@ -98,6 +98,19 @@ type OrderStatus struct {
 // Orders ... (NEW)
 type Orders []OrderStatus
 
+// Trades ... (NEW)
+type Trades []Trade
+
+// Trade ... (NEW)
+type Trade struct {
+	TID       int     `json:"tid"`           // tid (integer)
+	Timestamp int64   `json:"timestamp"`     // timestamp (time)
+	Price     float64 `json:"price,string"`  // price (price)
+	Amount    float64 `json:"amount,string"` // amount (decimal)
+	Exchange  string  `json:"exchange"`      // exchange (string)
+	Type      string  `json:"type"`          // type (string) "sell" or "buy" (can be "" if undetermined)
+}
+
 // LendbookOffer ...
 type LendbookOffer struct {
 	Rate      float64 `json:"rate,string"`      // rate (rate in % per 365 days)
@@ -318,6 +331,32 @@ func (api *API) WalletBalances() (wallet WalletBalances, err error) {
 		wallet[WalletKey{w.Type, w.Currency}] = w
 	}
 
+	return
+}
+
+// Trades returns a list of the most recent trades for the given symbol.
+// ... Request ...
+// 	timestamp (time): Optional. Only show trades at or after this timestamp.
+//	limit_trades (int): Optional. Limit the number of trades returned. Must be >= 1. Default is 50.
+func (api *API) Trades(symbol string, timestamp string, limitTrades int) (trades Trades, err error) {
+	symbol = strings.ToLower(symbol)
+
+	body, err := api.get("/v1/trades/" + symbol + "?timestamp=" + timestamp + "&limit_trades=" + strconv.Itoa(limitTrades))
+	if err != nil {
+		return
+	}
+
+	err = json.Unmarshal(body, &trades)
+	if err != nil { // Failed to unmarshal expected message
+		// Attempt to unmarshal the error message
+		errorMessage := ErrorMessage{}
+		err = json.Unmarshal(body, &errorMessage)
+		if err != nil { // Not expected message and not expected error, bailing...
+			return
+		}
+
+		return nil, errors.New("API: " + errorMessage.Message)
+	}
 	return
 }
 

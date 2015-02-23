@@ -61,6 +61,15 @@ func TestOrderbook(t *testing.T) {
 	}
 }
 
+func TestTrades(t *testing.T) {
+	// Test normal request
+	trades, err := apiPublic.Trades("btcusd", "1", 2)
+	if err != nil || len(trades) != 2 {
+		t.Error("Failed: " + err.Error())
+		return
+	}
+}
+
 func TestActiveOrders(t *testing.T) {
 	checkEnv(t)
 
