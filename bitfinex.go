@@ -343,7 +343,7 @@ func (api *API) Trades(symbol string, timestamp string, limitTrades int) (trades
 
 	body, err := api.get("/v1/trades/" + symbol + "?timestamp=" + timestamp + "&limit_trades=" + strconv.Itoa(limitTrades))
 	if err != nil {
-		return nil, errors.New("API.Trades: " + string(body) + "\n^^^ " + err.Error())
+		return nil, errors.New("API.Trades: body: " + string(body) + " err: " + err.Error())
 	}
 
 	err = json.Unmarshal(body, &trades)
