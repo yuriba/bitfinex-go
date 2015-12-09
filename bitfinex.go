@@ -93,6 +93,7 @@ type OrderStatus struct {
 	ExecutedAmount    float64 `json:"executed_amount,string"`     // executed_amount (decimal): How much of the order has been executed so far in its history?
 	RemainingAmount   float64 `json:"remaining_amount,string"`    // remaining_amount (decimal): How much is still remaining to be submitted?
 	OriginalAmount    float64 `json:"original_amount,string"`     // original_amount (decimal): What was the order originally submitted for?
+	OrderID           int     `json:"order_id"`                         // id (int): The order ID
 }
 
 // Orders ... (NEW)
@@ -644,6 +645,47 @@ func (api *API) NewOffer(currency string, amount, rate float64, period int, dire
 		}
 
 		return offer, errors.New("API: " + errorMessage.Message)
+	}
+
+	return
+}
+
+func (api *API) NewOrder(currency string, amount, price float64, exchange, side, orderType string) (order OrderStatus, err error) {
+	request := struct {
+		URL       	string  `json:"request"`
+		Nonce     	string  `json:"nonce"`
+		Symbol      string  `json:"symbol"`
+		Amount     	float64 `json:"amount"`
+		Price  			float64 `json:"price"`
+		Exchange    string 	`json:"exchange,string"`
+		Side      	string 	`json:"side,string"`
+		Type    		string 	`json:"type"`
+	}{
+		"/v1/order/new",
+		strconv.FormatInt(time.Now().UnixNano(), 10),
+		currency,
+		amount,
+		price,
+		exchange,
+		side,
+		orderType,
+	}
+
+	body, err := api.post(request.URL, request)
+	if err != nil {
+		return
+	}
+
+	err = json.Unmarshal(body, &order)
+	if err != nil || order.ID == 0 { // Failed to unmarshal expected message
+		// Attempt to unmarshal the error message
+		errorMessage := ErrorMessage{}
+		err = json.Unmarshal(body, &errorMessage)
+		if err != nil { // Not expected message and not expected error, bailing...
+			return
+		}
+
+		return order, errors.New("API: " + errorMessage.Message)
 	}
 
 	return
