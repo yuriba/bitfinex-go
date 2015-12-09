@@ -657,8 +657,8 @@ func (api *API) NewOrder(currency string, amount, price float64, exchange, side,
 		Symbol      string  `json:"symbol"`
 		Amount     	float64 `json:"amount,string"`
 		Price  			float64 `json:"price,string"`
-		Exchange    string 	`json:"exchange,string"`
-		Side      	string 	`json:"side,string"`
+		Exchange    string 	`json:"exchange"`
+		Side      	string 	`json:"side"`
 		Type    		string 	`json:"type"`
 	}{
 		"/v1/order/new",
