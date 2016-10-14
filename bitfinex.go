@@ -6,11 +6,13 @@ package bitfinex
 import (
 	"crypto/hmac"
 	"crypto/sha512"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -30,6 +32,7 @@ const (
 type API struct {
 	APIKey    string
 	APISecret string
+	client    *http.Client
 }
 
 // ErrorMessage ...
@@ -93,7 +96,7 @@ type OrderStatus struct {
 	ExecutedAmount    float64 `json:"executed_amount,string"`     // executed_amount (decimal): How much of the order has been executed so far in its history?
 	RemainingAmount   float64 `json:"remaining_amount,string"`    // remaining_amount (decimal): How much is still remaining to be submitted?
 	OriginalAmount    float64 `json:"original_amount,string"`     // original_amount (decimal): What was the order originally submitted for?
-	OrderID           int     `json:"order_id"`                         // id (int): The order ID
+	OrderID           int     `json:"order_id"`                   // id (int): The order ID
 }
 
 // Orders ... (NEW)
@@ -191,9 +194,21 @@ type Credits []Credit
 
 // New returns a new Bitfinex API instance
 func New(key, secret string) (api *API) {
+	dialContext := (&net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 5 * time.Minute,
+	}).DialContext
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: false},
+		DialContext:     dialContext,
+	}
+	client := &http.Client{
+		Transport: tr,
+	}
 	api = &API{
 		APIKey:    key,
 		APISecret: secret,
+		client:    client,
 	}
 	return api
 }
@@ -652,14 +667,14 @@ func (api *API) NewOffer(currency string, amount, rate float64, period int, dire
 
 func (api *API) NewOrder(currency string, amount, price float64, exchange, side, orderType string) (order OrderStatus, err error) {
 	request := struct {
-		URL       	string  `json:"request"`
-		Nonce     	string  `json:"nonce"`
-		Symbol      string  `json:"symbol"`
-		Amount     	float64 `json:"amount,string"`
-		Price  			float64 `json:"price,string"`
-		Exchange    string 	`json:"exchange"`
-		Side      	string 	`json:"side"`
-		Type    		string 	`json:"type"`
+		URL      string  `json:"request"`
+		Nonce    string  `json:"nonce"`
+		Symbol   string  `json:"symbol"`
+		Amount   float64 `json:"amount,string"`
+		Price    float64 `json:"price,string"`
+		Exchange string  `json:"exchange"`
+		Side     string  `json:"side"`
+		Type     string  `json:"type"`
 	}{
 		"/v1/order/new",
 		strconv.FormatInt(time.Now().UnixNano(), 10),
@@ -765,7 +780,6 @@ func (api *API) post(url string, payload interface{}) (body []byte, err error) {
 	signature := hex.EncodeToString(h.Sum(nil))
 
 	// POST
-	client := &http.Client{}
 	req, err := http.NewRequest("POST", APIURL+url, nil)
 	if err != nil {
 		return
@@ -775,7 +789,7 @@ func (api *API) post(url string, payload interface{}) (body []byte, err error) {
 	req.Header.Add("X-BFX-PAYLOAD", payloadBase64)
 	req.Header.Add("X-BFX-SIGNATURE", signature)
 
-	resp, err := client.Do(req)
+	resp, err := api.client.Do(req)
 	if err != nil {
 		return
 	}
