@@ -321,7 +321,7 @@ func (api *API) WalletBalances() (wallet WalletBalances, err error) {
 		Nonce string `json:"nonce"`
 	}{
 		"/v1/balances",
-		strconv.FormatInt(time.Now().UnixNano(), 10),
+		createNonce(),
 	}
 
 	body, err := api.post(request.URL, request)
@@ -388,7 +388,7 @@ func (api *API) MyTrades(symbol string, timestamp string, limitTrades int) (mytr
 		LimitTrades int    `json:"limit_trades"`
 	}{
 		URL:         "/v1/mytrades",
-		Nonce:       strconv.FormatInt(time.Now().UnixNano(), 10),
+		Nonce:       createNonce(),
 		Symbol:      symbol,
 		Timestamp:   timestamp,
 		LimitTrades: limitTrades,
@@ -420,7 +420,7 @@ func (api *API) ActiveOrders() (orders Orders, err error) {
 		Nonce string `json:"nonce"`
 	}{
 		"/v1/orders",
-		strconv.FormatInt(time.Now().UnixNano(), 10),
+		createNonce(),
 	}
 
 	body, err := api.post(request.URL, request)
@@ -451,7 +451,7 @@ func (api *API) OrderStatus(id int) (order OrderStatus, err error) {
 		OrderID int    `json:"order_id"`
 	}{
 		"/v1/order/status",
-		strconv.FormatInt(time.Now().UnixNano(), 10),
+		createNonce(),
 		id,
 	}
 
@@ -483,7 +483,7 @@ func (api *API) CancelOrder(id int) (err error) {
 		OfferID int    `json:"order_id"`
 	}{
 		"/v1/order/cancel",
-		strconv.FormatInt(time.Now().UnixNano(), 10),
+		createNonce(),
 		id,
 	}
 
@@ -524,7 +524,7 @@ func (api *API) CancelOffer(id int) (err error) {
 		OfferID int    `json:"offer_id"`
 	}{
 		"/v1/offer/cancel",
-		strconv.FormatInt(time.Now().UnixNano(), 10),
+		createNonce(),
 		id,
 	}
 
@@ -564,7 +564,7 @@ func (api *API) ActiveCredits() (credits Credits, err error) {
 		Nonce string `json:"nonce"`
 	}{
 		"/v1/credits",
-		strconv.FormatInt(time.Now().UnixNano(), 10),
+		createNonce(),
 	}
 
 	body, err := api.post(request.URL, request)
@@ -594,7 +594,7 @@ func (api *API) ActiveOffers() (offers Offers, err error) {
 		Nonce string `json:"nonce"`
 	}{
 		"/v1/offers",
-		strconv.FormatInt(time.Now().UnixNano(), 10),
+		createNonce(),
 	}
 
 	body, err := api.post(request.URL, request)
@@ -637,7 +637,7 @@ func (api *API) NewOffer(currency string, amount, rate float64, period int, dire
 		Direction string  `json:"direction"`
 	}{
 		"/v1/offer/new",
-		strconv.FormatInt(time.Now().UnixNano(), 10),
+		createNonce(),
 		currency,
 		amount,
 		rate,
@@ -677,7 +677,7 @@ func (api *API) NewOrder(currency string, amount, price float64, exchange, side,
 		Type     string  `json:"type"`
 	}{
 		"/v1/order/new",
-		strconv.FormatInt(time.Now().UnixNano(), 10),
+		createNonce(),
 		currency,
 		amount,
 		price,
@@ -797,4 +797,12 @@ func (api *API) post(url string, payload interface{}) (body []byte, err error) {
 
 	body, err = ioutil.ReadAll(resp.Body)
 	return
+}
+
+// long nonce to resolve "Failed: API: Nonce is too small"
+func createNonce()(nonce string) {
+	t1 := strconv.FormatInt(time.Now().UnixNano(), 10)
+	t2 := strconv.FormatInt(time.Now().UnixNano(), 10)
+	t3 := strconv.FormatInt(time.Now().UnixNano(), 10)
+	return t1 + t2 + t3
 }
