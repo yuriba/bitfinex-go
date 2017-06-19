@@ -21,7 +21,7 @@ import (
 
 const (
 	// APIURL points to Bitfinex API URL, found at https://www.bitfinex.com/pages/API
-	APIURL = "https://api.bitfinex.com/"
+	APIURL = "https://api.bitfinex.com"
 	// LEND ...
 	LEND = "lend"
 	// BORROW ...
